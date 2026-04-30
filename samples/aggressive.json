@@ -1,0 +1,10 @@
+{
+  "total_value_inr": 2500000,
+  "monthly_expenses_inr": 100000,
+  "assets": [
+    { "name": "BTC", "allocation_pct": 50, "expected_crash_pct": -80 },
+    { "name": "ETH", "allocation_pct": 20, "expected_crash_pct": -85 },
+    { "name": "SMALLCAP", "allocation_pct": 25, "expected_crash_pct": -60 },
+    { "name": "CASH", "allocation_pct": 5, "expected_crash_pct": 0 }
+  ]
+}

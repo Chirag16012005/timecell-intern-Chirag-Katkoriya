@@ -14,14 +14,13 @@ load_dotenv()
 
 
 LOGGER = logging.getLogger(__name__)
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 SYSTEM_ROLE = "You are a thoughtful financial advisor explaining portfolio risk to a client."
 
 
 def build_prompt(portfolio: dict[str, Any], tone: str) -> str:
     """Build a constrained prompt so model output is predictable and parseable."""
     tone_notes = {
-        "beginner": "Use very simple language and one analogy. Avoid finance jargon.",
+        "beginner": "Use very simple language and one analogy to explain clearly in a lucid manner. Avoid finance jargon.",
         "experienced": "Use moderate detail and plain language with light terminology.",
         "expert": "Use precise technical language and discuss risk trade-offs directly.",
     }
@@ -42,13 +41,17 @@ def build_prompt(portfolio: dict[str, Any], tone: str) -> str:
 
 def call_llm(prompt: str) -> str:
     """Call one provider with strict JSON output expectation."""
+    model = "gemini-3-flash-preview"
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Set GEMINI_API_KEY or GOOGLE_API_KEY in environment")
+
     client = genai.Client(api_key=api_key)
+
     full_prompt = f"{SYSTEM_ROLE}\n\n{prompt}"
+
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model=model,
         contents=full_prompt,
         config={"temperature": 0.2, "response_mime_type": "application/json"},
     )
@@ -65,8 +68,10 @@ def parse_response(response: str) -> dict[str, str]:
     for field in required:
         if field not in parsed or not isinstance(parsed[field], str):
             raise ValueError(f"missing or invalid field: {field}")
+
     if parsed["verdict"] not in {"Aggressive", "Balanced", "Conservative"}:
         raise ValueError("verdict must be Aggressive, Balanced, or Conservative")
+
     return {field: parsed[field].strip() for field in required}
 
 
@@ -80,8 +85,16 @@ def _fallback_explanation() -> dict[str, str]:
     }
 
 
+def _fallback_pair() -> tuple[str, dict[str, str]]:
+    """Return (raw_str, parsed_dict) tuple matching explain_portfolio's contract."""
+    parsed = _fallback_explanation()
+    raw = json.dumps(parsed, ensure_ascii=True, indent=2)
+    return raw, parsed
+
+
 def critique_explanation(explanation: dict[str, str]) -> str:
     """Ask the model to critique explanation quality for missing risks."""
+    
     prompt = (
         "Critique this financial explanation for accuracy and missing risks. "
         "Keep it under 5 bullet points.\n\n"
@@ -90,21 +103,13 @@ def critique_explanation(explanation: dict[str, str]) -> str:
     return call_llm(prompt)
 
 
-def explain_portfolio(portfolio: dict[str, Any], tone: str = "beginner") -> dict[str, str]:
-    """Generate explanation, print raw model output, and return parsed structure."""
+def explain_portfolio(portfolio: dict[str, Any], tone: str = "beginner") -> tuple[str, dict[str, str]]:
+    """Generate explanation and return (raw_response, parsed_dict)."""
     try:
         prompt = build_prompt(portfolio, tone)
         raw_response = call_llm(prompt)
-        print("Raw LLM response:")
-        print(raw_response)
         parsed = parse_response(raw_response)
-        print("\nParsed Output:")
-        print(parsed)
-        return parsed
-        
-    except (Exception, ValueError, KeyError, json.JSONDecodeError) as exc:
+        return raw_response, parsed
+    except Exception as exc:
         LOGGER.error("Portfolio explanation failed: %s", exc)
-        if "raw_response" in locals():
-            print("Raw LLM response:")
-            print(raw_response)
-        return _fallback_explanation()
+        return _fallback_pair()
