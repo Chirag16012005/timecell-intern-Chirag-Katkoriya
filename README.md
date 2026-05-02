@@ -383,14 +383,12 @@ A score on its own is decoration. A score with **drivers** is a decision. That's
 
 ## How I Used AI Tools
 
-I used **Cursor + Claude** throughout, deliberately and transparently:
+I used **Cursor + ChatGPT** throughout, deliberately and transparently:
 
 - **Scaffolding & boilerplate** — let the AI generate first drafts of validation logic, table renderers, and argparse setup, then trimmed everything I didn't need.
-- **Edge-case brainstorming** — asked "what could break this function?" before writing tests in my head. This is how the boolean-as-number bug, zero-expenses divide-by-zero, and below-zero asset clamp got caught.
-- **Prompt iteration for Task 3** — I literally pasted my draft prompt into a separate Cursor chat and asked Claude to roleplay as the model and critique its own response. That's how I caught the "preamble" failure mode and moved to JSON MIME.
-- **Code review** — after each task, I asked the AI to point out unclear naming, dead code, and inconsistent error handling. Several function renames in `metrics.py` came from that pass.
-
-What I **did not** do: I never accepted code I couldn't explain line by line. Every function in this repo is something I'd be comfortable defending in a follow-up call.
+- **Edge-case brainstorming** — asked "what could break this function?" to AI so that it could include all edge cases and then I reviewed it.
+- **Prompt iteration for Task 3** — I literally pasted my draft prompt into a separate ChatGPT chat and asked it to roleplay as the model and critique its own response.
+- **Code review** — after each task, I asked the AI to point out unclear naming and dead code. Several function renames in `metrics.py` came from that pass.
 
 ---
 
@@ -401,24 +399,22 @@ What I **did not** do: I never accepted code I couldn't explain line by line. Ev
 - **Pure functions where possible.** `compute_post_crash_value`, `compute_runway`, `compute_temperature` etc. are pure — they take inputs, return outputs, no I/O. That makes them trivial to test.
 - **Side-by-side crash scenarios as the default return shape.** Even though only one was required, returning both severe and moderate makes the API more useful with negligible cost.
 - **UTF-8 fallbacks.** Both the table renderer and the bar chart degrade to plain ASCII on terminals that don't support box-drawing or block characters — important on Windows PowerShell.
-- **No hidden state.** No global config, no module-level mutable state, no background threads. Everything the user sees, they invoked.
+
 
 ### Things I'd build next given more time
 
 - A proper `pytest` suite (current validation is hand-tested via the CLI)
 - A small FastAPI wrapper so the same logic can power a web UI
 - Caching for the market data fetch (e.g. 60-second TTL) to be polite to free APIs
-- A historical-data version of the crash scenarios using actual 2008 / 2020 / 2022 drawdowns instead of user-supplied magnitudes
+
 
 ---
 
 ## What Was Hardest
 
-> *Required by the submission instructions.*
+The hardest part includes **Task 3's prompt engineering**, not the code. Getting the model to return *parseable, consistent, on-tone* output — every time, across portfolios — took more iteration than other tasks. The breakthroughs were (1) using Gemini's `response_mime_type="application/json"` instead of trying to wrangle markdown, (2) lowering temperature to 0.2 for determinism. Some of the Gemini Models were not giving repsonse properly or taking too much time, due to excess traffic and hence I had to change the model to a different one, gemini-3-preview, I got this model by checking through the official documentation.
 
-The hardest part was **Task 3's prompt engineering**, not the code. Getting the model to return *parseable, consistent, on-tone* output — every time, across portfolios — took more iteration than every other task combined. The breakthroughs were (1) using Gemini's `response_mime_type="application/json"` instead of trying to wrangle markdown, (2) lowering temperature to 0.2 for determinism, and (3) baking the schema directly into the prompt rather than describing it in prose. Once those three were in place, the explainer became the most reliable component of the whole CLI.
-
-The runner-up was a small but real one: deciding **how to weight** structural vs personal risk in Task 4. There is no objectively correct answer — 60/40 is a defensible default, but a real product would let the user tune it. Recognizing that the *interface* matters more than the *exact number* was the lesson.
+The other thing was a small but real one: deciding **how to weight** structural vs personal risk in Task 4. There is no objectively correct answer — 60/40 is a defensible default, but a real product would let the user tune it. Recognizing that the *interface* matters more than the *exact number* was the lesson.
 
 ---
 
