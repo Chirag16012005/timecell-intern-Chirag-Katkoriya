@@ -26,9 +26,12 @@ def fetch_stock_price(symbol: str) -> dict:
         ticker = yf.Ticker(symbol)
         info = ticker.info
         price = info.get("regularMarketPrice")
+
         if price is None:
             raise ValueError("regularMarketPrice missing from response")
+        
         currency = str(info.get("currency", "INR")).upper()
+
         return {"name": symbol, "price": float(price), "currency": currency, "timestamp": timestamp}
     except Exception as exc:
         LOGGER.error("Stock fetch failed for %s: %s", symbol, exc)
@@ -37,15 +40,19 @@ def fetch_stock_price(symbol: str) -> dict:
 
 def fetch_crypto_price(coin_id: str) -> dict:
     """Fetch one crypto price from CoinGecko in USD."""
+
     timestamp = _now_ist().strftime("%Y-%m-%d %H:%M:%S IST")
     params = {"ids": coin_id, "vs_currencies": "usd"}
+
     try:
         response = requests.get(COINGECKO_URL, params=params, timeout=10)
         response.raise_for_status()
         payload = response.json()
         price = payload.get(coin_id, {}).get("usd")
+        
         if price is None:
             raise ValueError("usd price missing in CoinGecko response")
+        
         return {"name": coin_id.upper(), "price": float(price), "currency": "USD", "timestamp": timestamp}
     except Exception as exc:
         LOGGER.error("Crypto fetch failed for %s: %s", coin_id, exc)

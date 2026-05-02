@@ -62,6 +62,7 @@ def call_llm(prompt: str) -> str:
 
 def parse_response(response: str) -> dict[str, str]:
     """Parse LLM JSON and enforce expected fields for downstream safety."""
+    
     cleaned = response.strip().replace("```json", "").replace("```", "")
     parsed = json.loads(cleaned)
     required = ("summary", "what_is_good", "what_to_improve", "verdict")

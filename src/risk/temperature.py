@@ -16,7 +16,7 @@ def _clamp(value: float, low: float, high: float) -> float:
 def compute_crash_severity(portfolio: dict[str, Any]) -> float:
     """Estimate structural downside risk from allocation and crash depth."""
     validated = validate_portfolio(portfolio)
-    # Structural risk: large weights in assets with deep crashes hurt most.
+   
     raw_score = sum(
         asset["allocation_pct"] * abs(asset["expected_crash_pct"]) / 100.0
         for asset in validated["assets"]
@@ -26,7 +26,7 @@ def compute_crash_severity(portfolio: dict[str, Any]) -> float:
 
 def compute_runway_penalty(runway_months: float) -> float:
     """Convert personal cash runway into a risk penalty score."""
-    # Personal risk rises when runway is short, even if asset risk is unchanged.
+   
     if runway_months >= 24:
         return 0.0
     if runway_months <= 0:
@@ -49,7 +49,7 @@ def compute_temperature(portfolio: dict[str, Any], runway_months: float) -> tupl
     """Combine market crash risk and runway risk into one temperature."""
     severity = compute_crash_severity(portfolio)
     runway_penalty = compute_runway_penalty(runway_months)
-    # Weighted blend balances portfolio structure (60%) and life runway (40%).
+    
     score = _clamp(0.6 * severity + 0.4 * runway_penalty, 0.0, 100.0)
     return round(score, 2), _label_for_score(score)
 
@@ -74,12 +74,16 @@ def _top_risk_contributors(portfolio: dict[str, Any], top_n: int = 2) -> list[st
 def print_temperature_summary(portfolio: dict[str, Any], runway_months: float) -> None:
     """Print an interview-friendly explanation of temperature and drivers."""
     score, label = compute_temperature(portfolio, runway_months)
+
     emoji_map = {"COLD": "🧊", "WARM": "🌤️", "HOT": "🔥", "VERY HOT": "🚨"}
+
     if not (sys.stdout.encoding or "").lower().startswith("utf"):
         emoji_map = {k: "" for k in emoji_map}
+
     top_assets = ", ".join(_top_risk_contributors(portfolio))
     runway_text = f"{runway_months:.1f} months" if runway_months >= 0 else "below 0 months"
     marker = f"{emoji_map[label]} " if emoji_map[label] else ""
+    
     print(f"Portfolio Temperature: {marker}{label} ({score:.1f}/100)\n")
     print("Reason:")
     print(f"- Top crash-risk contributors: {top_assets}")

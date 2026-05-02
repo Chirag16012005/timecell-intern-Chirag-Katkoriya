@@ -33,12 +33,14 @@ def load_portfolio(path: str | None) -> dict[str, Any]:
     """Load and validate a portfolio from a JSON file, or fall back to the default."""
     if not path:
         return DEFAULT_PORTFOLIO
+    
     portfolio_path = Path(path)
+
     if not portfolio_path.is_file():
         raise FileNotFoundError(f"portfolio file not found: {portfolio_path}")
     with portfolio_path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
-    # Reuse Task 1's validator so every entry point applies the same rules.
+  
     validate_portfolio(data)
     return data
 
@@ -122,7 +124,7 @@ def _prompt_tone(default: str) -> str:
     raw = input(f"Choose tone for Task 3 [{options}] (default: {default}): ").strip().lower()
     if not raw:
         return default
-    # Tolerate users who paste extra args; pick the first whitespace-separated token.
+   
     first_token = raw.split()[0]
     if first_token not in VALID_TONES:
         print(f"Unknown tone '{first_token}'. Falling back to '{default}'.")
@@ -135,7 +137,6 @@ def _prompt_portfolio_path(initial_path: str | None) -> tuple[dict[str, Any], st
 
     Returns (portfolio_dict, source_label) so the caller can report what was loaded.
     If the user passed --portfolio on the CLI, that wins and we skip the prompt.
-    Pressing Enter at the prompt selects the built-in default.
     """
     if initial_path is not None:
         return load_portfolio(initial_path), initial_path
@@ -196,12 +197,11 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Entry point for interactive and argument-based execution."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
-    # Quiet third-party SDK chatter so it doesn't interleave with task output.
+   
     for noisy in ("httpx", "httpcore", "google_genai", "google.genai", "urllib3", "yfinance"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
     args = _parse_args()
 
-    # CLI mode: --task is set, so non-interactive run with whatever flags were given.
     if args.task is not None:
         try:
             portfolio = load_portfolio(args.portfolio)
@@ -212,7 +212,6 @@ def main() -> None:
         _run_selected_task(args.task, portfolio, args.tone)
         return
 
-    # Interactive mode: ask for portfolio first, then task, then tone if relevant.
     try:
         portfolio, source = _prompt_portfolio_path(args.portfolio)
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
@@ -222,12 +221,13 @@ def main() -> None:
 
     _print_menu()
     choice = input("Enter task number (1-4): ").strip()
+
     try:
         task = int(choice)
     except ValueError:
         print(f"Invalid input '{choice}'. Please enter a number from 1 to 4.")
         return
-    # Only Task 3 uses tone, so only ask when it's relevant.
+
     tone = _prompt_tone(args.tone) if task == 3 else args.tone
     _run_selected_task(task, portfolio, tone)
 
